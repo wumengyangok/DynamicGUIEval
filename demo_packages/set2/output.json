@@ -1,0 +1,62 @@
+[
+  {
+    "step_id": "Step1",
+    "context_injection": "用户画像信息：居住在一线城市的年轻职场人，习惯线上挂号并使用电子医保卡，出行多依赖网约车平台。注重时间效率和个人隐私，手机系统偏好现代、极简风格的UI界面。",
+    "main_app": null,
+    "sub_app": null,
+    "relevance_level": null,
+    "main_card_thumb_url": null,
+    "main_card_detail_url": null,
+    "sub_card_thumb_url": null,
+    "sub_card_detail_url": null,
+    "main_app_detail_prompt": null,
+    "sub_app_detail_prompt": null,
+    "main_app_thumb_prompt": null,
+    "sub_app_thumb_prompt": null
+  },
+  {
+    "step_id": "Step2",
+    "context_injection": "时间：上午8:30；地点：用户家中；事件：日历同步到10:00在同城中心医院有内科门诊预约，当前距离预约时间还有1.5小时，系统预判用户需要准备出发。",
+    "main_app": "RideHailing (打车出行)",
+    "sub_app": "HealthPlus (医疗挂号助手)",
+    "relevance_level": "1. 非常相关。理由：出发看病的核心前置条件是交通，因此将打车App置于主卡片并显示预计到达时间，帮助用户立刻解决出行需求；而医疗App作为副卡片，显示门诊预约号及科室信息，使用户出行前能快速确诊行程细节。",
+    "main_card_thumb_url": "main_thumb.png",
+    "main_card_detail_url": "main_detail.png",
+    "sub_card_thumb_url": "sub_thumb.png",
+    "sub_card_detail_url": "sub_detail.png",
+    "main_app_detail_prompt": "手机App UI设计风格，网约车应用实际手机app GUI截图，内容较为详细，包含高比例的地图界面、目的地'City Central Hospital'、车辆实时位置、预估全行程时间及'Pick Me Up'大按钮。极简现代视觉设计，所有的图片里面的文本必须为英文，高清晰度文本，逻辑正确且可读，无多余干扰元素。",
+    "sub_app_detail_prompt": "保持上一轮的极简现代UI设计风格连贯性，同城医疗辅助应用实际手机app GUI截图，内容较为详细。界面包含门诊预约卡片'Internal Medicine'、时间'10:00 AM'、医生姓名及就诊二维码。要求所有文本为英文，高清晰度文本，呈现专业可靠的医疗视觉氛围。",
+    "main_app_thumb_prompt": "手机App UI设计风格，网约车应用缩略图组件卡片，正方形或长宽大致相等的无规则图形，无背景。卡片内包含醒目的动态汽车Icon以及距目的地预估时间'25 Min'字样。视觉主色调为深蓝色系，与副卡片区分开。要求图片里面的文本为英文，高清晰度文本。",
+    "sub_app_thumb_prompt": "手机App UI设计风格，医疗应用缩略图组件卡片，正方形或长宽大致相等的无规则图形，无背景。卡片内包含绿色十字Logo和'Appt 10:00 AM'时间戳。视觉主色调为浅绿色系，与主打车软件形成清晰对比，保持极简感。图片里面的文本为英文，高清晰度文本。"
+  },
+  {
+    "step_id": "Step3",
+    "context_injection": "时间：上午9:45；地点：市中心医院门诊大厅；事件：GPS感应到已达医院范围内，并且连接上医院公共Wi-Fi，预约时间即将接近，患者处于初入医院寻找方向及准备就诊的状态。",
+    "main_app": "HealthPlus (院内导诊与签到)",
+    "sub_app": "E-Wallet (电子医保卡/支付)",
+    "relevance_level": "1. 非常相关。理由：到达医院后，用户的空间情境改变，核心痛点是如何在复杂的门诊大厅快速找到科室并签到取号，故医疗App切换为主推；同时副推变为支付/医保卡App，提前预测看完病后直接需要扫码付费的场景。",
+    "main_card_thumb_url": "main_thumb.png",
+    "main_card_detail_url": "main_detail.png",
+    "sub_card_thumb_url": "sub_thumb.png",
+    "sub_card_detail_url": "sub_detail.png",
+    "main_app_detail_prompt": "保持极简现代UI风格，医疗导诊应用实际手机app GUI截图，内容较为详细。界面中心显示院内3D楼层导航'Floor 3 - Room 302'，下方带有'Check-In Now'的显眼签到按钮，以及目前排号进度'Current Queue: 12'。图片里面的文本全为英文，高清晰度文本，逻辑清晰可读。",
+    "sub_app_detail_prompt": "延续相同的现代UI风格，电子钱包与医保卡应用实际手机app GUI截图，内容较为详细。界面突出展示用于扫码的条形码和二维码'Medical Insurance Barcode'，并显示当前的医保账户余额'Balance: $450.00'，带有盾牌状的安全锁图标。图片里面的文本全为英文，高清晰度文本。",
+    "main_app_thumb_prompt": "手机App UI设计风格，院内签到应用缩略图组件，正方形或长宽大致相等的无规则图形，无背景。包含当前排队等待人数'Wait: 3'和醒目的'CHECK IN'按钮。主色调为了引起注意使用醒目的亮绿色。图片里面的文本全为英文，高清晰度文本。",
+    "sub_app_thumb_prompt": "手机App UI设计风格，电子钱包应用缩略图组件，正方形或长宽大致相等的无规则图形，无背景。包含一个缩微版的扫码QR图案和'Pay Ready'字样。主色调使用明亮的蓝白色调，与主App区分。图片里面的文本全为英文，高清晰度文本。"
+  },
+  {
+    "step_id": "Step4",
+    "context_injection": "时间：上午11:30；地点：医院一楼取药窗口；事件：系统检测到医保扣款信息产生，并且读取到处方信息，用户完成就诊，等待取药并即将离开。",
+    "main_app": "MedTimer (智能服药提醒)",
+    "sub_app": "RideHailing (打车返程)",
+    "relevance_level": "2. 中等相关。理由：取药后不仅意味着就诊流程即将结束，下一环节是健康管理的延伸（如何吃药），故推送服药管理工具作为主卡进行健康干预；副卡片设为打车软件用于返程，之所以设为中等相关，是因为取药后用户可能有短暂停留、周边就餐的需求，不属于极高迫切度。",
+    "main_card_thumb_url": "main_thumb.png",
+    "main_card_detail_url": "main_detail.png",
+    "sub_card_thumb_url": "sub_thumb.png",
+    "sub_card_detail_url": "sub_detail.png",
+    "main_app_detail_prompt": "继续保持UI风格连贯一致，智能服药跟踪应用实际手机app GUI截图，内容较为详细。界面展示今日服药清单'Take 2 Pills after lunch'，包含药瓶图标、闹钟设定及'Mark as Taken'勾选按钮。图片里面的文本全为英文，高清晰度文本，色彩温馨且有医疗健康属性。",
+    "sub_app_detail_prompt": "统一现代UI风格框架，网约车应用实际手机app GUI截图，内容较为详细。界面为一键返程功能，顶端显示'Going Home?'，显示预估接驾时间和'Request Ride'按钮。图片里面的文本全为英文，高清晰度文本，逻辑正确且可读。",
+    "main_app_thumb_prompt": "手机App UI设计风格，服药提醒应用缩略图组件，正方形或长宽大致相等的无规则图形，无背景。图标含有一个胶囊加上时钟，文字显示'Next Pill: 12:30 PM'。主色调偏温暖的橙色系。图片里面的文本全为英文，高清晰度文本。",
+    "sub_app_thumb_prompt": "手机App UI设计风格，网约车一键返程缩略图组件，正方形或长宽大致相等的无规则图形，无背景。包含带有Home徽章的汽车小图标，文字'Home 20 Min'。主色调回归深蓝色，区分度高。图片里面的文本全为英文，高清晰度文本。"
+  }
+]

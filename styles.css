@@ -212,6 +212,7 @@ h2 {
 
 .step-tabs {
   flex-wrap: wrap;
+  margin-bottom: 14px;
 }
 
 .step-tab {
@@ -226,10 +227,11 @@ h2 {
 .cards-grid {
   align-items: stretch;
   margin-top: 16px;
+  flex-wrap: wrap;
 }
 
 .gui-card-frame {
-  flex: 1;
+  flex: 1 1 calc(50% - 8px);
   padding: 14px;
   border: 1px solid rgba(216, 204, 187, 0.85);
   border-radius: 22px;
@@ -245,8 +247,8 @@ h2 {
 
 .gui-card-frame img {
   width: 100%;
-  min-height: 320px;
-  max-height: 420px;
+  min-height: 240px;
+  max-height: 320px;
   object-fit: contain;
   border-radius: 18px;
   background: linear-gradient(180deg, #f9f8f6 0%, #f2eee6 100%);

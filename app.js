@@ -1,10 +1,8 @@
 const state = {
   packageName: "",
-  manifest: null,
-  dataSpec: [],
-  skillText: "",
-  fileEntries: [],
-  fileMap: new Map(),
+  packages: new Map(),
+  packageOrder: [],
+  currentPackage: null,
   objectUrlMap: new Map(),
   selectedStepId: null,
   selectedFilePath: null,
@@ -13,6 +11,7 @@ const state = {
 const el = {
   folderInput: document.getElementById("folderInput"),
   packageBadge: document.getElementById("packageBadge"),
+  packageTabs: document.getElementById("packageTabs"),
   packageSummary: document.getElementById("packageSummary"),
   fileList: document.getElementById("fileList"),
   filePreview: document.getElementById("filePreview"),
@@ -20,10 +19,14 @@ const el = {
   stepTitle: document.getElementById("stepTitle"),
   stepMeta: document.getElementById("stepMeta"),
   stepSummary: document.getElementById("stepSummary"),
-  cardAImage: document.getElementById("cardAImage"),
-  cardBImage: document.getElementById("cardBImage"),
-  cardACaption: document.getElementById("cardACaption"),
-  cardBCaption: document.getElementById("cardBCaption"),
+  mainThumbImage: document.getElementById("mainThumbImage"),
+  mainDetailImage: document.getElementById("mainDetailImage"),
+  subThumbImage: document.getElementById("subThumbImage"),
+  subDetailImage: document.getElementById("subDetailImage"),
+  mainThumbCaption: document.getElementById("mainThumbCaption"),
+  mainDetailCaption: document.getElementById("mainDetailCaption"),
+  subThumbCaption: document.getElementById("subThumbCaption"),
+  subDetailCaption: document.getElementById("subDetailCaption"),
   baseUrlInput: document.getElementById("baseUrlInput"),
   modelInput: document.getElementById("modelInput"),
   apiKeyInput: document.getElementById("apiKeyInput"),
@@ -50,33 +53,121 @@ function normalizeRelativePath(rawPath) {
 }
 
 async function initializePackageFromFiles(files) {
-  const fileMap = new Map();
+  const grouped = new Map();
   for (const file of files) {
     const relativePath = file.webkitRelativePath || file.name;
-    fileMap.set(normalizeRelativePath(relativePath.split("/").slice(1).join("/")), file);
+    const parts = relativePath.split("/").filter(Boolean);
+    const packageIndex =
+      parts.length >= 3 && (parts[1].startsWith("set") || parts[1].includes("_eval_demo")) ? 1 : 0;
+    const packageName = parts[packageIndex] || "folder_package";
+    const innerPath = normalizeRelativePath(parts.slice(packageIndex + 1).join("/"));
+    if (!grouped.has(packageName)) {
+      grouped.set(packageName, new Map());
+    }
+    grouped.get(packageName).set(innerPath, file);
   }
 
-  return initializePackageFromMap(fileMap, files[0]?.webkitRelativePath?.split("/")[0] || "folder_package");
+  return initializePackages(grouped);
 }
 
-async function initializePackageFromMap(fileMap, packageName) {
+async function initializePackages(groupedMaps) {
   cleanupObjectUrls();
+  state.packages = new Map();
+  state.packageOrder = [];
 
+  for (const [packageName, fileMap] of groupedMaps.entries()) {
+    let pkg = null;
+    if (fileMap.has("package_manifest.json")) {
+      pkg = await buildManifestPackage(packageName, fileMap);
+    } else if (fileMap.has("output.json")) {
+      pkg = await buildSetPackage(packageName, fileMap);
+    }
+    if (pkg) {
+      state.packages.set(packageName, pkg);
+      state.packageOrder.push(packageName);
+    }
+  }
+
+  if (!state.packageOrder.length) {
+    throw new Error("No supported package found. Expected package_manifest.json or output.json.");
+  }
+
+  state.packageOrder.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  await switchPackage(state.packageOrder[0]);
+}
+
+async function buildManifestPackage(packageName, fileMap) {
+  const manifest = JSON.parse(await readTextFromMap(fileMap, "package_manifest.json"));
+  const dataSpec = JSON.parse(await readTextFromMap(fileMap, manifest.entry_data_file));
+  const skillText = await readTextFromMap(fileMap, manifest.skill_file);
+  return {
+    packageName,
+    fileMap,
+    fileEntries: Array.from(fileMap.keys()).sort(),
+    manifest,
+    dataSpec,
+    skillText,
+    kind: "manifest",
+  };
+}
+
+async function buildSetPackage(packageName, fileMap) {
+  const rawDataSpec = JSON.parse(await readTextFromMap(fileMap, "output.json"));
+  const inputText = fileMap.has("input.txt") ? await readTextFromMap(fileMap, "input.txt") : "";
+  const skillText = buildSkillFromSetInput(inputText);
+  const dataSpec = rawDataSpec.map((step, index) => enrichSetStep(step, index + 1, fileMap));
+  const manifest = {
+    package_name: packageName,
+    display_name_zh: packageName.toUpperCase(),
+    description_zh: "Set-style evaluation package with four-image inputs per step.",
+    story_id: packageName,
+    difficulty: "set-demo",
+    files: Array.from(fileMap.keys()).sort(),
+    steps: dataSpec.map((step) => ({ step_id: step.step_id, title_zh: step.context_injection || step.step_id })),
+    default_step_id: dataSpec.find((item) => item.main_card_thumb_url)?.step_id || dataSpec[0]?.step_id || null,
+  };
+  return {
+    packageName,
+    fileMap,
+    fileEntries: Array.from(fileMap.keys()).sort(),
+    manifest,
+    dataSpec,
+    skillText,
+    kind: "set",
+  };
+}
+
+function enrichSetStep(step, index, fileMap) {
+  if (index === 1) {
+    return step;
+  }
+  const itemIndex = index;
+  const mapped = { ...step };
+  const candidates = {
+    main_card_thumb_url: `item_${itemIndex}_main_app_thumb_prompt.png`,
+    main_card_detail_url: `item_${itemIndex}_main_app_detail_prompt.png`,
+    sub_card_thumb_url: `item_${itemIndex}_sub_app_thumb_prompt.png`,
+    sub_card_detail_url: `item_${itemIndex}_sub_app_detail_prompt.png`,
+  };
+  Object.entries(candidates).forEach(([field, filename]) => {
+    if (fileMap.has(filename)) {
+      mapped[field] = filename;
+    }
+  });
+  return mapped;
+}
+
+async function switchPackage(packageName) {
+  const pkg = state.packages.get(packageName);
+  if (!pkg) {
+    return;
+  }
+  state.currentPackage = pkg;
   state.packageName = packageName;
-  state.fileMap = fileMap;
-  state.fileEntries = Array.from(fileMap.keys()).sort();
-
-  const manifest = await readJson("package_manifest.json");
-  const dataSpec = await readJson(manifest.entry_data_file);
-  const skillText = await readText(manifest.skill_file);
-
-  state.manifest = manifest;
-  state.dataSpec = dataSpec;
-  state.skillText = skillText;
-  state.selectedStepId = manifest.default_step_id || dataSpec[0]?.step_id || null;
-  state.selectedFilePath = "package_manifest.json";
-
-  el.skillEditor.value = skillText;
+  state.selectedStepId = pkg.manifest.default_step_id || pkg.dataSpec[0]?.step_id || null;
+  state.selectedFilePath = pkg.fileEntries[0] || null;
+  el.skillEditor.value = pkg.skillText;
+  renderPackageTabs();
   renderPackageSummary();
   renderFileList();
   await renderFilePreview(state.selectedFilePath);
@@ -84,9 +175,24 @@ async function initializePackageFromMap(fileMap, packageName) {
   await renderSelectedStep();
 }
 
-async function readText(path) {
+function buildSkillFromSetInput(inputText) {
+  return [
+    "# Dynamic GUI Eval Skill / 动态 GUI 评测 Skill",
+    "",
+    "## Requirement Source / 需求来源",
+    inputText.trim(),
+    "",
+    "## Review Instructions / 评测指令",
+    "- Evaluate four images together: main thumb, main detail, sub thumb, sub detail.",
+    "- Judge main/sub causal relevance first, then detail consistency, then timing correctness, then content completeness.",
+    "- Keep the report in Markdown.",
+    "- Use concrete evidence from the image content and the current step context.",
+  ].join("\n");
+}
+
+async function readTextFromMap(fileMap, path) {
   const key = normalizeRelativePath(path);
-  const entry = state.fileMap.get(key);
+  const entry = fileMap.get(key);
   if (!entry) {
     throw new Error(`Missing file: ${key}`);
   }
@@ -96,6 +202,10 @@ async function readText(path) {
   return entry.text();
 }
 
+async function readText(path) {
+  return readTextFromMap(state.currentPackage.fileMap, path);
+}
+
 async function readJson(path) {
   const text = await readText(path);
   return JSON.parse(text);
@@ -103,7 +213,7 @@ async function readJson(path) {
 
 function resolveImageUrl(path) {
   const key = normalizeRelativePath(path);
-  const entry = state.fileMap.get(key);
+  const entry = state.currentPackage.fileMap.get(key);
   if (!entry) {
     return "";
   }
@@ -124,25 +234,45 @@ function cleanupObjectUrls() {
 }
 
 function renderPackageSummary() {
-  const { manifest } = state;
+  const { manifest, kind } = state.currentPackage;
   el.packageBadge.textContent = manifest.package_name;
   el.packageSummary.innerHTML = `
     <strong>${sanitizeHtml(manifest.display_name_zh)}</strong><br />
     ${sanitizeHtml(manifest.description_zh)}<br /><br />
     <strong>Story:</strong> ${sanitizeHtml(manifest.story_id)}<br />
     <strong>Difficulty:</strong> ${sanitizeHtml(manifest.difficulty)}<br />
+    <strong>Format:</strong> ${sanitizeHtml(kind)}<br />
     <strong>Files:</strong> ${manifest.files.length}<br />
     <strong>Steps:</strong> ${manifest.steps.length}
   `;
 }
 
+function renderPackageTabs() {
+  if (!state.packageOrder.length) {
+    el.packageTabs.textContent = "No packages loaded.";
+    return;
+  }
+  el.packageTabs.innerHTML = "";
+  state.packageOrder.forEach((packageName) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "step-tab" + (state.packageName === packageName ? " active" : "");
+    button.textContent = packageName;
+    button.addEventListener("click", async () => {
+      await switchPackage(packageName);
+      setStatus(`Switched to ${packageName}.`);
+    });
+    el.packageTabs.appendChild(button);
+  });
+}
+
 function renderFileList() {
-  if (!state.fileEntries.length) {
+  if (!state.currentPackage.fileEntries.length) {
     el.fileList.textContent = "No files loaded.";
     return;
   }
   el.fileList.innerHTML = "";
-  state.fileEntries.forEach((path) => {
+  state.currentPackage.fileEntries.forEach((path) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "file-item" + (state.selectedFilePath === path ? " active" : "");
@@ -161,7 +291,7 @@ async function renderFilePreview(path) {
     el.filePreview.textContent = "Select a file to inspect.";
     return;
   }
-  const entry = state.fileMap.get(path);
+  const entry = state.currentPackage.fileMap.get(path);
   if (!entry) {
     el.filePreview.textContent = `Missing file: ${path}`;
     return;
@@ -176,7 +306,7 @@ async function renderFilePreview(path) {
 }
 
 function renderStepTabs() {
-  const steps = state.dataSpec;
+  const steps = state.currentPackage.dataSpec;
   el.stepTabs.innerHTML = "";
   steps.forEach((step) => {
     const button = document.createElement("button");
@@ -193,37 +323,46 @@ function renderStepTabs() {
 }
 
 async function renderSelectedStep() {
-  const step = state.dataSpec.find((item) => item.step_id === state.selectedStepId);
+  const step = state.currentPackage.dataSpec.find((item) => item.step_id === state.selectedStepId);
   if (!step) {
     return;
   }
-  const manifestStep = state.manifest.steps.find((item) => item.step_id === step.step_id);
+  const manifestStep = state.currentPackage.manifest.steps.find((item) => item.step_id === step.step_id);
   el.stepTitle.textContent = `${step.step_id} · ${manifestStep?.title_zh || ""}`;
   el.stepMeta.textContent = `${step.context_window?.time_state || ""} · relevance=${step.relevance_level}`;
   el.stepSummary.innerHTML = `
     <strong>Context Injection</strong><br />
     ${sanitizeHtml(step.context_injection)}<br /><br />
+    <strong>Main / Sub App</strong><br />
+    ${sanitizeHtml(step.main_app || "-")} / ${sanitizeHtml(step.sub_app || "-")}<br /><br />
     <strong>User Goal</strong><br />
     ${sanitizeHtml(step.user_goal_zh || "")}<br /><br />
     <strong>Task Prompt</strong><br />
     ${sanitizeHtml(step.task_prompt?.zh || "")}
   `;
 
-  el.cardAImage.src = resolveImageUrl(step.main_card_thumb_url);
-  el.cardBImage.src = resolveImageUrl(step.sub_card_thumb_url);
-  el.cardACaption.textContent = `${step.main_app} · ${step.main_app_thumb_prompt}`;
-  el.cardBCaption.textContent = `${step.sub_app} · ${step.sub_app_thumb_prompt}`;
+  el.mainThumbImage.src = resolveImageUrl(step.main_card_thumb_url);
+  el.mainDetailImage.src = resolveImageUrl(step.main_card_detail_url);
+  el.subThumbImage.src = resolveImageUrl(step.sub_card_thumb_url);
+  el.subDetailImage.src = resolveImageUrl(step.sub_card_detail_url);
+  el.mainThumbCaption.textContent = `${step.main_app || "Main"} · ${step.main_app_thumb_prompt || "No thumb prompt"}`;
+  el.mainDetailCaption.textContent = `${step.main_app || "Main"} · ${step.main_app_detail_prompt || "No detail prompt"}`;
+  el.subThumbCaption.textContent = `${step.sub_app || "Sub"} · ${step.sub_app_thumb_prompt || "No thumb prompt"}`;
+  el.subDetailCaption.textContent = `${step.sub_app || "Sub"} · ${step.sub_app_detail_prompt || "No detail prompt"}`;
 }
 
 function getCurrentStep() {
-  return state.dataSpec.find((item) => item.step_id === state.selectedStepId);
+  return state.currentPackage.dataSpec.find((item) => item.step_id === state.selectedStepId);
 }
 
 async function toDataUrl(path) {
   const key = normalizeRelativePath(path);
-  const entry = state.fileMap.get(key);
+  if (!key) {
+    return null;
+  }
+  const entry = state.currentPackage.fileMap.get(key);
   if (!entry) {
-    throw new Error(`Missing image: ${key}`);
+    return null;
   }
   if (typeof entry === "string") {
     const response = await fetch(entry);
@@ -252,6 +391,15 @@ function buildSystemPrompt(skillText) {
 }
 
 function buildUserPrompt(step) {
+  const missingImages = [
+    ["main_card_thumb_url", step.main_card_thumb_url],
+    ["main_card_detail_url", step.main_card_detail_url],
+    ["sub_card_thumb_url", step.sub_card_thumb_url],
+    ["sub_card_detail_url", step.sub_card_detail_url],
+  ]
+    .filter(([, value]) => !value || !state.currentPackage.fileMap.has(normalizeRelativePath(value)))
+    .map(([key]) => key);
+
   return [
     "Please evaluate the current step and output a Markdown report.",
     "",
@@ -267,8 +415,10 @@ function buildUserPrompt(step) {
     "Important constraints:",
     "- Treat Card A as the primary task card.",
     "- Treat Card B as the supporting linked card.",
+    "- You must consider both thumbnail and detail images for both main and sub cards.",
     "- Use evidence from city, station, cinema, dinner, time window, and current user goal.",
     "- Keep the report concise but decision-oriented.",
+    missingImages.length ? `- Missing image fields: ${missingImages.join(", ")}` : "- All four image fields are available.",
   ].join("\n");
 }
 
@@ -288,10 +438,18 @@ async function generateReport() {
     setStatus("Generating evaluation report with Yunwu...");
     el.generateBtn.disabled = true;
 
-    const [cardADataUrl, cardBDataUrl] = await Promise.all([
+    const [mainThumbDataUrl, mainDetailDataUrl, subThumbDataUrl, subDetailDataUrl] = await Promise.all([
       toDataUrl(step.main_card_thumb_url),
+      toDataUrl(step.main_card_detail_url),
       toDataUrl(step.sub_card_thumb_url),
+      toDataUrl(step.sub_card_detail_url),
     ]);
+    const imageContent = [
+      mainThumbDataUrl ? { type: "image_url", image_url: { url: mainThumbDataUrl } } : null,
+      mainDetailDataUrl ? { type: "image_url", image_url: { url: mainDetailDataUrl } } : null,
+      subThumbDataUrl ? { type: "image_url", image_url: { url: subThumbDataUrl } } : null,
+      subDetailDataUrl ? { type: "image_url", image_url: { url: subDetailDataUrl } } : null,
+    ].filter(Boolean);
 
     const response = await fetch(`${el.baseUrlInput.value.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
@@ -311,8 +469,7 @@ async function generateReport() {
             role: "user",
             content: [
               { type: "text", text: buildUserPrompt(step) },
-              { type: "image_url", image_url: { url: cardADataUrl } },
-              { type: "image_url", image_url: { url: cardBDataUrl } },
+              ...imageContent,
             ],
           },
         ],
