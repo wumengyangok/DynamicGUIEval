@@ -8,6 +8,7 @@ const state = {
   objectUrlMap: new Map(),
   selectedStepId: null,
   selectedFilePath: null,
+  skillFileHandle: null,
 };
 
 const DEFAULT_SYSTEM_INTRO = `You are evaluating dynamic GUI card pairs for a demo platform.
@@ -103,6 +104,7 @@ const el = {
   includeSkillSelect: document.getElementById("includeSkillSelect"),
   includePackageSummarySelect: document.getElementById("includePackageSummarySelect"),
   skillEditor: document.getElementById("skillEditor"),
+  bindSkillFileBtn: document.getElementById("bindSkillFileBtn"),
   generateBtn: document.getElementById("generateBtn"),
   copyReportBtn: document.getElementById("copyReportBtn"),
   saveReportBtn: document.getElementById("saveReportBtn"),
@@ -114,6 +116,59 @@ function setStatus(text) {
   el.statusBar.textContent = text;
 }
 
+async function bindSkillFileHandle() {
+  if (!window.showSaveFilePicker) {
+    setStatus("Browser does not support direct local file sync for skill.md.");
+    return null;
+  }
+  const handle = await window.showSaveFilePicker({
+    suggestedName: "eval_skill.md",
+    types: [
+      {
+        description: "Markdown",
+        accept: {
+          "text/markdown": [".md"],
+          "text/plain": [".md"],
+        },
+      },
+    ],
+  });
+  state.skillFileHandle = handle;
+  await writeSkillToBoundFile();
+  return handle;
+}
+
+async function writeSkillToBoundFile() {
+  if (!state.skillFileHandle) {
+    return false;
+  }
+  const writable = await state.skillFileHandle.createWritable();
+  await writable.write(el.skillEditor.value);
+  await writable.close();
+  return true;
+}
+
+async function syncSkillFileBeforeRun() {
+  try {
+    if (state.skillFileHandle) {
+      await writeSkillToBoundFile();
+      return;
+    }
+    if (window.showSaveFilePicker) {
+      setStatus("Select eval_skill.md once so future runs can sync automatically.");
+      await bindSkillFileHandle();
+      return;
+    }
+    setStatus("Auto-sync unavailable in this browser. Skill still uses latest editor content.");
+  } catch (error) {
+    if (error && error.name === "AbortError") {
+      setStatus("Skill file sync skipped. Current run still uses latest editor content.");
+      return;
+    }
+    throw error;
+  }
+}
+
 function sanitizeHtml(text) {
   return String(text)
     .replaceAll("&", "&amp;")
@@ -122,6 +177,9 @@ function sanitizeHtml(text) {
 }
 
 function normalizeRelativePath(rawPath) {
+  if (typeof rawPath !== "string") {
+    return "";
+  }
   return rawPath.replace(/^\.?\/*/, "");
 }
 
@@ -552,6 +610,7 @@ async function generateReport() {
   }
 
   try {
+    await syncSkillFileBeforeRun();
     setStatus("Generating evaluation report with Yunwu...");
     el.generateBtn.disabled = true;
 
@@ -633,6 +692,19 @@ el.folderInput.addEventListener("change", async (event) => {
 });
 
 el.generateBtn.addEventListener("click", generateReport);
+el.bindSkillFileBtn.addEventListener("click", async () => {
+  try {
+    await bindSkillFileHandle();
+    setStatus("Skill file bound. Future runs will overwrite the same eval_skill.md.");
+  } catch (error) {
+    if (error && error.name === "AbortError") {
+      setStatus("Bind skill file cancelled.");
+      return;
+    }
+    console.error(error);
+    setStatus(`Bind skill file failed: ${error.message}`);
+  }
+});
 el.copyReportBtn.addEventListener("click", copyReport);
 el.saveReportBtn.addEventListener("click", saveReportToFile);
 el.skillEditor.addEventListener("input", () => {
