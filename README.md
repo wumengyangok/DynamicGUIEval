@@ -4,7 +4,7 @@ This is a zero-dependency local demo for dynamic GUI evaluation.
 
 Global evaluation skill file:
 
-- `eval_skill.md` at the root of `eval_demo_web/`
+- `eval_skill.md` at the root
 
 How to use:
 
@@ -25,9 +25,8 @@ Notes:
 
 - No local server is required.
 - Story packages are loaded with the browser file picker.
-- The page now supports both:
+- The page support:
   - `set1` to `set5` style packages (`input.txt + output.json + 4 images per step`)
-  - the earlier manifest-based demo package format
 - The evaluation skill is global and no longer comes from package-local data files.
 - Yunwu request construction is now split as:
   - `system`: only the editable opening/system instruction
