@@ -1,0 +1,37 @@
+Role: 你是一位资深的手机产品经理和用户体验（UX）专家，擅长设计基于情境感知的智能推荐系统。
+
+Task: 请根据我提供的“场景模版”和“目标场景”，生成一套完整的用户行为路径数据。你需要模拟用户在特定场景下，手机系统如何根据时间、环境和用户习惯动态推送App卡片。
+
+Input Modules:
+Module 1: 场景模版（参考用）
+场景：从上海到北京听演唱会。
+流程：Step1(用户画像) -> Step2(起飞前一天) -> Step3(航班信息注入) -> Step4(起飞前2.5h) -> Step5(到达北京) -> Step6(演唱会结束)。
+Module 2: 目标场景（需执行）
+场景：用户是一名职场领导，需要去公司开一场重要的会议。
+流程：请你根据这一核心意图，合理拆解出2-8个关键时间节点（Step）。其中，Step1放用户画像信息，即用户平时的习惯。
+
+Requirements:
+数据结构: 输出必须严格为 .json 格式（数组形式 [{{step1}, {step2}, ...}]）。
+字段定义: 每个Step包含以下键值（Step1只需要有step_id和context_injection的内容，其他都设置为null）： 
+step_id: 步骤编号。
+context_injection: 注入的环境信息（此类环境信息要求能够从手机的各项应用中收集，例如时间、手机定位、用户使用日常App的各项操作等）。
+main_app: 推送的主App名称。
+sub_app: 推送的副App名称。
+relevance_level: 主App与用户上下文的相关性（分为：1. 非常相关；2. 中等相关；3. 仅有某些信息相关；4. 完全不相关），并简述理由。
+relevance_level_between_card: 主/副App相关性（分为：1. 非常相关；2. 中等相关；3. 仅有某些信息相关；4. 完全不相关），并简述理由。
+accuracy_of_main_card_content: 生成的主App的缩略图是否正确且符合逻辑地提取了主App详情图中的信息（分为：0. 错误；1. 正确），并简述理由（输出格式例如：“0. 错误。理由：xxx”）。
+accuracy_of_sub_card_content: 生成的副App的缩略图是否正确且符合逻辑地提取了副App详情图中的信息（分为：0. 错误；1. 正确），并简述理由（输出格式例如：“0. 错误。理由：xxx”）。
+main_card_thumb_url: "item_<step_num>_main_app_thumb_prompt.png" (<step_num>为该步骤编号，例如：1、2、3...)
+main_card_detail_url: "item_<step_num>_main_app_detail_prompt.png" (<step_num>为该步骤编号，例如：1、2、3...)
+sub_card_thumb_url: "item_<step_num>_sub_app_thumb_prompt.png" (<step_num>为该步骤编号，例如：1、2、3...)
+sub_card_detail_url: "item_<step_num>_sub_app_detail_prompt.png" (<step_num>为该步骤编号，例如：1、2、3...)
+main_app_detail_prompt: 用于文生图模型生成主App详情图的中文提示词 。
+sub_app_detail_prompt: 用于文生图模型生成副App详情图的中文提示词。
+main_app_thumb_prompt:用于文生图模型生成主App缩略图的中文提示词 。
+sub_app_thumb_prompt:用于文生图模型生成副App缩略图的中文提示词。
+
+生成逻辑: 
+1) 动态推送: 随着Step推进，主/副App应根据用户意图动态调整，主/副App应用不包括微信、QQ等高频使用的聊天社交软件。
+2) 随机推送App以生成正负样本: 生成主App时，根据其与用户上下文的相关性以非常相关：中等相关：仅某些信息相关：完全不相关 = 2:2:1:5的比例随机生成。生成副App时，根据其与主App的相关性以同样的比例随机生成，从而产生正负样本。
+3) 随机生成主/副App缩略图以生成正负样本: 生成主/副App缩略图时，以30%的概率随机生成与对应的详情图里的信息相悖的内容，例如内容、数据逻辑等与详情图不一致。在构建错误的缩略图时，要求错误的信息不过于明显，例如只有某个数值不一致，最好能以假乱真。
+4) Prompt设计: 提示词需包含“手机App UI设计风格”、“详情图/缩略图以外的区域以白底作为背景”、“高清晰度文本”等描述，并要求图片生成模型生成四张图，即相关的主/副app详情图 （**实际手机app GUI截图, 内容较为详细**） 和主/副app缩略图 （一个正方形/长宽相等的无规则手机app简约风格的卡片，该卡片内浓缩了详情图中需要展示的重要信息和相关控件，要求每个缩略图包含至少5个以上的重要控件/信息且各信息排版美观，并且生成该prompt时，以30%左右的比例要求其缩略图中不包含文字，仅用简约的图案表示信息），且要求**详情图和缩略图里面的文本为中文，文本高度清晰，逻辑正确且可读**。同时，确保每个step中main_app_detail_prompt、 sub_app_detail_prompt、 main_app_thumb_prompt和sub_app_thumb_prompt生成逻辑符合多轮对话逻辑，以main_app_detail_prompt作为第一轮，并确保后续图片在UI风格上具有连贯性，每个prompt要求里面体现精确的数字、地点等内容，从而精确控制缩略图与详情图的一致性。

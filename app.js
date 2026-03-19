@@ -76,6 +76,90 @@ const DEFAULT_GLOBAL_SKILL = `# Dynamic GUI Eval Skill / 动态 GUI 评测 Skill
 - confidence:
 \`\`\``;
 
+const EMBEDDED_SAMPLE06_STEP2 = {
+  step_id: 2,
+  context_injection:
+    "环境信息：当前时间10:00，定位在家中，连接着Home-WiFi；设备交互：屏幕刚刚解锁，系统检测到用户最近十分钟内在使用浏览器搜索“红烧肉的正宗做法”、“清蒸鲈鱼”等关键词。",
+  main_app: "下厨房",
+  sub_app: "备忘录",
+  relevance_level:
+    "1. 非常相关。理由：用户当前刚搜过菜系，处于规划午餐菜品和食材清单的核心意图中，推送专业的菜品制作和食材清单App能够直接满足用户当前的备餐需求。",
+  relevance_level_between_card:
+    "1. 非常相关。理由：用户在浏览复杂菜谱时，往往面临记忆配料的痛点，菜谱App与备忘录购物清单形成了极致的任务互补与协同组合，且相关度极高。",
+  accuracy_of_main_card_content:
+    "1. 正确。理由：主App缩略图精准复刻并提取了详情图中红烧肉的菜品图、评分数字以及预计烹饪时间，两者逻辑完全自洽。",
+  accuracy_of_sub_card_content:
+    "1. 正确。理由：副App缩略图提取的五花肉、鲈鱼等条目信息及相应的待勾选状态与详情应用中的内容完全一致。",
+  main_card_thumb_url: "item_2_main_app_thumb_prompt.png",
+  main_card_detail_url: "item_2_main_app_detail_prompt.png",
+  sub_card_thumb_url: "item_2_sub_app_thumb_prompt.png",
+  sub_card_detail_url: "item_2_sub_app_detail_prompt.png",
+  main_app_detail_prompt:
+    "手机App UI设计风格，详情图以外的区域以白底作为背景，作为第一轮基准风格设定。该图展示“下厨房”App的菜谱详情页，要求页面排版现代且极简。顶部是一张色香味俱全的红烧肉高清实拍图。下方包含高清晰度中文文本，主标题为“秘制红烧肉”。副文本显示“评分：9.6分”、“烹饪时间：45分钟”。中间区域清晰展示食材清单的中文文本：“五花肉500g”、“冰糖20g”、“葱姜蒜若干”。",
+  sub_app_detail_prompt:
+    "继承第一轮中手机App UI设计风格的设定，要求背景区域白底。该图展示“备忘录”App的购物清单界面。界面顶端是高清晰度中文文本大标题“今日采购单”。下方是一个带有勾选框的待办列表，分别包含高清晰度中文字段：未勾选的“五花肉 500g”、未勾选的“冰糖 20g”、未勾选的“葱姜蒜若干”、未勾选的“新鲜鲈鱼 1条”。设计风格干净清爽，逻辑清晰。",
+  main_app_thumb_prompt:
+    "继承前述UI风格，生成一个正方形（长宽相等）无规则手机App简约风格卡片作为主App缩略图，除了缩略图卡片外周围背景应用纯白底。卡片内高度浓缩红烧肉界面关键信息。必须包含至少5个重要控件：一张红烧肉的小方形图、高清晰度中文标题“秘制红烧肉”、带有星号icon的“9.6分”、带钟表icon的“45分钟”，以及底部的一个带有“开始”文字的操作按钮。整体排版美观紧凑。",
+  sub_app_thumb_prompt:
+    "继承前述UI风格，生成“备忘录”App正方形（长宽相等）简约卡片缩略图，外部背景使用白底。高度浓缩购物单信息。必须包含至少5个重要控件：顶部极简的高清晰中文标题“采购单”，下方对应四行非常简化的待办项，带有清晰中文本“五花肉”、“冰糖”、“葱姜蒜”、“鲈鱼”，且每一项左侧均带有一个圆形的未勾选对应的复选框icon。整个界面极简、高清晰且严谨匹配详情界面的文本数据。",
+  user_goal_zh: "在家中查看午餐菜谱，并为稍后去实体商超采购食材做准备",
+};
+
+const EMBEDDED_SAMPLE06_INPUT = `Role: 你是一位资深的手机产品经理和用户体验（UX）专家，擅长设计基于情境感知的智能推荐系统。
+
+Task: 请根据我提供的“场景模版”和“目标场景”，生成一套完整的用户行为路径数据。你需要模拟用户在特定场景下，手机系统如何根据时间、环境和用户习惯动态推送App卡片。`;
+
+const EMBEDDED_SAMPLE06_REPORT = `# Evaluation Report
+
+## Step Summary
+- step_id: 2
+- user_goal: 在家中查看午餐菜谱，并为稍后去实体商超采购食材做准备
+- key_entities:
+  - time window: 10:00，刚解锁屏幕
+  - location: 家中，Home-WiFi
+  - search intent: “红烧肉的正宗做法”“清蒸鲈鱼”
+  - Card A topic: 秘制红烧肉菜谱
+  - Card B topic: 今日采购单（五花肉、冰糖、葱姜蒜、鲈鱼）
+
+## 1. Main-Sub Card Causal Relevance
+- verdict: 基本相关
+- evidence:
+  - A 卡直接命中用户刚搜索的“红烧肉”做法，符合当前做饭兴趣和午餐准备场景。
+  - B 卡作为采购单，能自然承接 A 卡的食材准备需求。
+  - B 卡中额外加入“新鲜鲈鱼1条”，与当前另一搜索词“清蒸鲈鱼”也有关，因此可解释为多道菜联动采购。
+  - 但 A 卡是单一道菜，B 卡混入另一道菜食材，主从依赖关系不够纯粹，存在轻微跳跃。
+
+## 2. Thumbnail-Detail Relevance
+- verdict: 相关性较好
+- evidence:
+  - A 卡缩略图与详情图一致，均为“秘制红烧肉”，评分、时长、食材和步骤信息前后统一。
+  - B 卡缩略图与详情图一致，均为采购清单，主要条目一致且详情图补充了规格（500g、20g、1条）。
+  - A 卡食材与 B 卡前三项高度对应，联动关系清晰。
+
+## 3. Timing Correctness
+- verdict: 合适
+- evidence:
+  - 当前 10:00，用户刚在家搜索菜谱，正处于“决定做什么、列采购清单”的最佳时机。
+  - 此时展示菜谱 + 采购单，有助于用户马上确定菜单并准备出门采购。
+  - 相比购物中或做饭中，这个时间点更符合前置决策阶段。
+
+## 4. Content Correctness And Completeness
+- verdict: 部分完整，存在混搭风险
+- evidence:
+  - A 卡内容完整：菜名、评分、耗时、食材清单、制作步骤均具备。
+  - B 卡内容也基本完整：采购条目清晰，并补充了部分数量规格。
+  - 问题在于 A 卡只覆盖红烧肉，而 B 卡加入鲈鱼，说明它实际是“组合菜单采购单”而非 A 卡的严格附属清单。
+  - 若系统意图支持“一荤一鱼”的丰盛午餐，应在主卡或副卡中明确这是双菜方案，否则容易让用户误解鲈鱼来源。
+
+## Risks
+- 主副卡关系略混杂：B 卡不只是 A 卡的食材依赖，还引入了另一道菜。
+- 若用户当前只想先看红烧肉做法，鲈鱼条目可能造成认知负担。
+- 缺少对“双菜组合”或“基于最近搜索生成采购单”的显式说明。
+
+## Final Verdict
+- overall: 可接受，推荐价值较高，但主副卡因果关系不够完全严谨
+- confidence: 0.85`;
+
 const el = {
   folderInput: document.getElementById("folderInput"),
   packageBadge: document.getElementById("packageBadge"),
@@ -227,6 +311,66 @@ async function initializePackages(groupedMaps) {
 
   state.packageOrder.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   await switchPackage(state.packageOrder[0]);
+}
+
+async function initializeEmbeddedDemo() {
+  cleanupObjectUrls();
+  state.packages = new Map();
+  state.packageOrder = [];
+  state.globalSkillText = state.globalSkillText || DEFAULT_GLOBAL_SKILL;
+
+  const packageName = "sample06_demo";
+  const outputJson = JSON.stringify([EMBEDDED_SAMPLE06_STEP2], null, 2);
+  const fileMap = new Map([
+    ["input.txt", EMBEDDED_SAMPLE06_INPUT],
+    ["output.json", outputJson],
+    ["sample06_2_evaluation_report.md", EMBEDDED_SAMPLE06_REPORT],
+    [
+      "item_2_main_app_thumb_prompt.png",
+      "./demo_packages/sample06/item_2_main_app_thumb_prompt.png",
+    ],
+    [
+      "item_2_main_app_detail_prompt.png",
+      "./demo_packages/sample06/item_2_main_app_detail_prompt.png",
+    ],
+    [
+      "item_2_sub_app_thumb_prompt.png",
+      "./demo_packages/sample06/item_2_sub_app_thumb_prompt.png",
+    ],
+    [
+      "item_2_sub_app_detail_prompt.png",
+      "./demo_packages/sample06/item_2_sub_app_detail_prompt.png",
+    ],
+  ]);
+
+  const manifest = {
+    package_name: packageName,
+    display_name_zh: "Sample06 Step2 Demo",
+    description_zh: "Preloaded demo point with four images and a saved evaluation report.",
+    story_id: "sample06",
+    difficulty: "demo",
+    files: Array.from(fileMap.keys()).sort(),
+    steps: [{ step_id: EMBEDDED_SAMPLE06_STEP2.step_id, title_zh: "预加载 Demo Step" }],
+    default_step_id: EMBEDDED_SAMPLE06_STEP2.step_id,
+  };
+
+  const pkg = {
+    packageName,
+    fileMap,
+    fileEntries: manifest.files,
+    manifest,
+    dataSpec: [EMBEDDED_SAMPLE06_STEP2],
+    kind: "embedded-demo",
+  };
+
+  state.packages.set(packageName, pkg);
+  state.packageOrder.push(packageName);
+  await switchPackage(packageName);
+  state.selectedFilePath = "sample06_2_evaluation_report.md";
+  renderFileList();
+  await renderFilePreview(state.selectedFilePath);
+  el.reportOutput.value = EMBEDDED_SAMPLE06_REPORT;
+  setStatus("Loaded prebuilt demo: sample06 step2.");
 }
 
 async function buildManifestPackage(packageName, fileMap) {
@@ -764,5 +908,9 @@ state.systemIntroText = DEFAULT_SYSTEM_INTRO;
 el.systemIntroEditor.value = DEFAULT_SYSTEM_INTRO;
 el.skillEditor.value = DEFAULT_GLOBAL_SKILL;
 updateSystemPromptPreview();
-el.reportOutput.value = "# Evaluation report output";
+el.reportOutput.value = EMBEDDED_SAMPLE06_REPORT;
 el.requestDebugOutput.value = "# Yunwu request body debug output";
+initializeEmbeddedDemo().catch((error) => {
+  console.error(error);
+  setStatus(`Preload demo failed: ${error.message}`);
+});
