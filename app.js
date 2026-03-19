@@ -3,10 +3,78 @@ const state = {
   packages: new Map(),
   packageOrder: [],
   currentPackage: null,
+  globalSkillText: "",
+  systemIntroText: "",
   objectUrlMap: new Map(),
   selectedStepId: null,
   selectedFilePath: null,
 };
+
+const DEFAULT_SYSTEM_INTRO = `You are evaluating dynamic GUI card pairs for a demo platform.
+Your job is to judge card relevance, timing, causal linkage, and content correctness under mobile contextual intelligence scenarios.
+Return a concise but rigorous Markdown evaluation report.`;
+
+const DEFAULT_GLOBAL_SKILL = `# Dynamic GUI Eval Skill / 动态 GUI 评测 Skill
+
+## Scope / 评测范围
+
+1. 卡片内容与用户上下文相关性判定
+1.1 主副卡片内容因果关系推理
+1.2 双层卡片间相关性推理机制
+
+2. 卡片内容与用户上下文相关性判定 - 对齐用户体验
+2.1 卡片弹出与消失时间正确性判定
+2.2 卡片内容正确性与完整性判定
+
+## Working Rule / 工作规则
+
+- Evaluate four images together: main thumb, main detail, sub thumb, sub detail.
+- Treat Card A as the main task card and Card B as the linked supporting card.
+- Judge whether Card B is a natural consequence or dependency of Card A under the current step context.
+- Judge whether the current timing is appropriate for the card pair to appear.
+- Extract key entities such as city, station, cinema, dinner, and time window before giving a conclusion.
+- Output a concise Markdown report with evidence, risks, and a final verdict.
+
+- 对四张图一起评测：主卡缩略图、主卡详情图、副卡缩略图、副卡详情图。
+- 将 A 卡视为主任务卡，B 卡视为联动辅助卡。
+- 判断 B 卡是否是在当前上下文下由 A 卡自然引出的依赖或辅助动作。
+- 判断当前时间点是否适合这组卡片出现。
+- 先提取城市、车站、影院、晚餐、时间窗口等关键实体，再给出结论。
+- 输出简洁的 Markdown 报告，包含证据、风险和最终判断。
+
+## Output Template / 输出模板
+
+\`\`\`md
+# Evaluation Report
+
+## Step Summary
+- step_id:
+- user_goal:
+- relevance_level:
+
+## 1. Main-Sub Card Causal Relevance
+- verdict:
+- evidence:
+
+## 2. Thumbnail-Detail Relevance
+- verdict:
+- evidence:
+
+## 3. Timing Correctness
+- verdict:
+- evidence:
+
+## 4. Content Correctness And Completeness
+- verdict:
+- evidence:
+
+## Risks
+- ...
+
+## Final Verdict
+- overall:
+- confidence:
+\`\`\``;
 
 const el = {
   folderInput: document.getElementById("folderInput"),
@@ -30,9 +98,14 @@ const el = {
   baseUrlInput: document.getElementById("baseUrlInput"),
   modelInput: document.getElementById("modelInput"),
   apiKeyInput: document.getElementById("apiKeyInput"),
+  systemIntroEditor: document.getElementById("systemIntroEditor"),
+  contextScopeSelect: document.getElementById("contextScopeSelect"),
+  includeSkillSelect: document.getElementById("includeSkillSelect"),
+  includePackageSummarySelect: document.getElementById("includePackageSummarySelect"),
   skillEditor: document.getElementById("skillEditor"),
   generateBtn: document.getElementById("generateBtn"),
   copyReportBtn: document.getElementById("copyReportBtn"),
+  saveReportBtn: document.getElementById("saveReportBtn"),
   reportOutput: document.getElementById("reportOutput"),
   statusBar: document.getElementById("statusBar"),
 };
@@ -74,6 +147,7 @@ async function initializePackages(groupedMaps) {
   cleanupObjectUrls();
   state.packages = new Map();
   state.packageOrder = [];
+  state.globalSkillText = state.globalSkillText || DEFAULT_GLOBAL_SKILL;
 
   for (const [packageName, fileMap] of groupedMaps.entries()) {
     let pkg = null;
@@ -99,22 +173,18 @@ async function initializePackages(groupedMaps) {
 async function buildManifestPackage(packageName, fileMap) {
   const manifest = JSON.parse(await readTextFromMap(fileMap, "package_manifest.json"));
   const dataSpec = JSON.parse(await readTextFromMap(fileMap, manifest.entry_data_file));
-  const skillText = await readTextFromMap(fileMap, manifest.skill_file);
   return {
     packageName,
     fileMap,
     fileEntries: Array.from(fileMap.keys()).sort(),
     manifest,
     dataSpec,
-    skillText,
     kind: "manifest",
   };
 }
 
 async function buildSetPackage(packageName, fileMap) {
   const rawDataSpec = JSON.parse(await readTextFromMap(fileMap, "output.json"));
-  const inputText = fileMap.has("input.txt") ? await readTextFromMap(fileMap, "input.txt") : "";
-  const skillText = buildSkillFromSetInput(inputText);
   const dataSpec = rawDataSpec.map((step, index) => enrichSetStep(step, index + 1, fileMap));
   const manifest = {
     package_name: packageName,
@@ -132,7 +202,6 @@ async function buildSetPackage(packageName, fileMap) {
     fileEntries: Array.from(fileMap.keys()).sort(),
     manifest,
     dataSpec,
-    skillText,
     kind: "set",
   };
 }
@@ -166,28 +235,14 @@ async function switchPackage(packageName) {
   state.packageName = packageName;
   state.selectedStepId = pkg.manifest.default_step_id || pkg.dataSpec[0]?.step_id || null;
   state.selectedFilePath = pkg.fileEntries[0] || null;
-  el.skillEditor.value = pkg.skillText;
+  el.skillEditor.value = state.globalSkillText || DEFAULT_GLOBAL_SKILL;
   renderPackageTabs();
   renderPackageSummary();
   renderFileList();
   await renderFilePreview(state.selectedFilePath);
   renderStepTabs();
   await renderSelectedStep();
-}
-
-function buildSkillFromSetInput(inputText) {
-  return [
-    "# Dynamic GUI Eval Skill / 动态 GUI 评测 Skill",
-    "",
-    "## Requirement Source / 需求来源",
-    inputText.trim(),
-    "",
-    "## Review Instructions / 评测指令",
-    "- Evaluate four images together: main thumb, main detail, sub thumb, sub detail.",
-    "- Judge main/sub causal relevance first, then detail consistency, then timing correctness, then content completeness.",
-    "- Keep the report in Markdown.",
-    "- Use concrete evidence from the image content and the current step context.",
-  ].join("\n");
+  updateSystemPromptPreview();
 }
 
 async function readTextFromMap(fileMap, path) {
@@ -317,6 +372,7 @@ function renderStepTabs() {
       state.selectedStepId = step.step_id;
       renderStepTabs();
       await renderSelectedStep();
+      updateSystemPromptPreview();
     });
     el.stepTabs.appendChild(button);
   });
@@ -382,12 +438,68 @@ function blobToDataUrl(blob) {
 }
 
 function buildSystemPrompt(skillText) {
-  return [
-    "You are evaluating dynamic GUI card pairs for a demo platform.",
-    "Use the following skill as your rubric and output contract.",
-    "",
-    skillText,
-  ].join("\n");
+  const sections = [el.systemIntroEditor.value.trim() || DEFAULT_SYSTEM_INTRO];
+  if (el.includePackageSummarySelect.value === "yes" && state.currentPackage) {
+    const manifest = state.currentPackage.manifest;
+    sections.push(
+      [
+        "Package Summary:",
+        `- package_name: ${manifest.package_name}`,
+        `- story_id: ${manifest.story_id}`,
+        `- difficulty: ${manifest.difficulty}`,
+        `- step_count: ${manifest.steps.length}`,
+      ].join("\n")
+    );
+  }
+  if (el.contextScopeSelect.value === "all_steps" && state.currentPackage) {
+    const allStepsSummary = state.currentPackage.dataSpec
+      .map((step) => {
+        const goal = step.user_goal_zh || step.context_injection || "";
+        return `- ${step.step_id}: ${goal}`;
+      })
+      .join("\n");
+    sections.push(`Full Story Context:\n${allStepsSummary}`);
+  } else if (state.currentPackage) {
+    const step = getCurrentStep();
+    if (step) {
+      sections.push(
+        [
+          "Current Step Context:",
+          `- step_id: ${step.step_id}`,
+          `- context_injection: ${step.context_injection || ""}`,
+          `- user_goal: ${step.user_goal_zh || ""}`,
+        ].join("\n")
+      );
+    }
+  }
+  if (el.includeSkillSelect.value === "yes") {
+    sections.push(["Use the following skill as your rubric and output contract:", skillText].join("\n\n"));
+  }
+  return sections.filter(Boolean).join("\n\n");
+}
+
+function updateSystemPromptPreview() {
+  return;
+}
+
+function saveReportToFile() {
+  const content = el.reportOutput.value;
+  if (!content.trim()) {
+    setStatus("No report to save.");
+    return;
+  }
+  const stepId = state.selectedStepId || "report";
+  const packageName = state.packageName || "package";
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${packageName}_${stepId}_evaluation_report.md`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+  setStatus("Report saved to local md.");
 }
 
 function buildUserPrompt(step) {
@@ -428,6 +540,11 @@ async function generateReport() {
     setStatus("No step selected.");
     return;
   }
+  const baseUrlRaw = el.baseUrlInput?.value?.trim() || "";
+  if (!baseUrlRaw) {
+    setStatus("Base URL is required.");
+    return;
+  }
   const apiKey = el.apiKeyInput.value.trim();
   if (!apiKey) {
     setStatus("Yunwu API key is required.");
@@ -451,7 +568,7 @@ async function generateReport() {
       subDetailDataUrl ? { type: "image_url", image_url: { url: subDetailDataUrl } } : null,
     ].filter(Boolean);
 
-    const response = await fetch(`${el.baseUrlInput.value.replace(/\/$/, "")}/chat/completions`, {
+    const response = await fetch(`${baseUrlRaw.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -517,6 +634,22 @@ el.folderInput.addEventListener("change", async (event) => {
 
 el.generateBtn.addEventListener("click", generateReport);
 el.copyReportBtn.addEventListener("click", copyReport);
+el.saveReportBtn.addEventListener("click", saveReportToFile);
+el.skillEditor.addEventListener("input", () => {
+  state.globalSkillText = el.skillEditor.value;
+  updateSystemPromptPreview();
+});
+el.systemIntroEditor.addEventListener("input", () => {
+  state.systemIntroText = el.systemIntroEditor.value;
+  updateSystemPromptPreview();
+});
+el.contextScopeSelect.addEventListener("change", updateSystemPromptPreview);
+el.includeSkillSelect.addEventListener("change", updateSystemPromptPreview);
+el.includePackageSummarySelect.addEventListener("change", updateSystemPromptPreview);
 
-el.skillEditor.value = "# Evaluation skill will appear here after loading a package.";
+state.globalSkillText = DEFAULT_GLOBAL_SKILL;
+state.systemIntroText = DEFAULT_SYSTEM_INTRO;
+el.systemIntroEditor.value = DEFAULT_SYSTEM_INTRO;
+el.skillEditor.value = DEFAULT_GLOBAL_SKILL;
+updateSystemPromptPreview();
 el.reportOutput.value = "# Evaluation report output";

@@ -281,12 +281,14 @@ h2 {
 }
 
 input,
+select,
 textarea,
 button {
   font: inherit;
 }
 
-input {
+input,
+select {
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -299,6 +301,10 @@ input {
   padding: 14px;
   resize: vertical;
   line-height: 1.55;
+}
+
+.compact-editor {
+  min-height: 140px;
 }
 
 .report-output {

@@ -120,6 +120,39 @@
 
           <div class="panel card grow">
             <div class="panel-header">
+              <h2>VLM Input Builder</h2>
+            </div>
+            <div class="form-grid">
+              <label class="full-row">
+                <span>System Prompt Opening</span>
+                <textarea id="systemIntroEditor" class="editor compact-editor"></textarea>
+              </label>
+              <label>
+                <span>Context Scope</span>
+                <select id="contextScopeSelect">
+                  <option value="current_step">Current Step Only</option>
+                  <option value="all_steps">All Steps</option>
+                </select>
+              </label>
+              <label>
+                <span>Include Skill</span>
+                <select id="includeSkillSelect">
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </label>
+              <label>
+                <span>Include Package Summary</span>
+                <select id="includePackageSummarySelect">
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div class="panel card grow">
+            <div class="panel-header">
               <h2>Evaluation Skill (Markdown)</h2>
             </div>
             <textarea id="skillEditor" class="editor"></textarea>
@@ -129,6 +162,9 @@
               </button>
               <button id="copyReportBtn" class="secondary-btn" type="button">
                 Copy Report
+              </button>
+              <button id="saveReportBtn" class="secondary-btn" type="button">
+                Save Report MD
               </button>
             </div>
             <div id="statusBar" class="status-bar">Ready.</div>
