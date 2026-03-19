@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dynamic GUI Eval Demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Dynamic GUI Evaluation Demo</p>
+          <h1>Story Package Evaluator</h1>
+        </div>
+        <div class="controls">
+          <label class="folder-button">
+            <input id="folderInput" type="file" webkitdirectory multiple />
+            <span>Load Story Package Folder</span>
+          </label>
+        </div>
+      </header>
+
+      <main class="main-layout">
+        <section class="left-panel">
+          <div class="panel card">
+            <div class="panel-header">
+              <h2>Package</h2>
+              <span id="packageBadge" class="badge">No package loaded</span>
+            </div>
+            <div id="packageSummary" class="package-summary empty-state">
+              Select a story package folder to begin.
+            </div>
+          </div>
+
+          <div class="split-row">
+            <div class="panel card files-panel">
+              <div class="panel-header">
+                <h2>Data Files</h2>
+              </div>
+              <div id="fileList" class="file-list empty-state">No files yet.</div>
+            </div>
+
+            <div class="panel card file-preview-panel">
+              <div class="panel-header">
+                <h2>File Preview</h2>
+              </div>
+              <pre id="filePreview" class="file-preview">Select a file to inspect.</pre>
+            </div>
+          </div>
+
+          <div class="panel card">
+            <div class="panel-header">
+              <h2>Steps</h2>
+            </div>
+            <div id="stepTabs" class="step-tabs empty-state">No steps loaded.</div>
+          </div>
+
+          <div class="panel card">
+            <div class="panel-header">
+              <h2 id="stepTitle">Current Step</h2>
+              <span id="stepMeta" class="subtle-text"></span>
+            </div>
+
+            <div id="stepSummary" class="step-summary empty-state">
+              Load a package to view step details.
+            </div>
+
+            <div class="cards-grid">
+              <article class="gui-card-frame">
+                <div class="card-label">Card A · Main</div>
+                <img id="cardAImage" alt="Card A" />
+                <div id="cardACaption" class="card-caption">No card loaded.</div>
+              </article>
+
+              <article class="gui-card-frame">
+                <div class="card-label">Card B · Support</div>
+                <img id="cardBImage" alt="Card B" />
+                <div id="cardBCaption" class="card-caption">No card loaded.</div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <aside class="right-panel">
+          <div class="panel card">
+            <div class="panel-header">
+              <h2>Yunwu VLM</h2>
+            </div>
+            <div class="form-grid">
+              <label>
+                <span>Base URL</span>
+                <input id="baseUrlInput" type="text" value="https://yunwu.ai/v1" />
+              </label>
+              <label>
+                <span>Model</span>
+                <input id="modelInput" type="text" value="gpt-5.4" />
+              </label>
+              <label class="full-row">
+                <span>API Key</span>
+                <input id="apiKeyInput" type="password" placeholder="Enter Yunwu API key" />
+              </label>
+            </div>
+          </div>
+
+          <div class="panel card grow">
+            <div class="panel-header">
+              <h2>Evaluation Skill (Markdown)</h2>
+            </div>
+            <textarea id="skillEditor" class="editor"></textarea>
+            <div class="button-row">
+              <button id="generateBtn" class="primary-btn" type="button">
+                Generate Evaluation Report
+              </button>
+              <button id="copyReportBtn" class="secondary-btn" type="button">
+                Copy Report
+              </button>
+            </div>
+            <div id="statusBar" class="status-bar">Ready.</div>
+          </div>
+
+          <div class="panel card grow">
+            <div class="panel-header">
+              <h2>Evaluation Report</h2>
+            </div>
+            <textarea id="reportOutput" class="editor report-output" readonly></textarea>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
