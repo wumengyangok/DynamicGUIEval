@@ -51,7 +51,6 @@ const DEFAULT_GLOBAL_SKILL = `# Dynamic GUI Eval Skill / 动态 GUI 评测 Skill
 ## Step Summary
 - step_id:
 - user_goal:
-- relevance_level:
 
 ## 1. Main-Sub Card Causal Relevance
 - verdict:
@@ -103,7 +102,6 @@ const el = {
   systemIntroEditor: document.getElementById("systemIntroEditor"),
   contextScopeSelect: document.getElementById("contextScopeSelect"),
   includeSkillSelect: document.getElementById("includeSkillSelect"),
-  includePackageSummarySelect: document.getElementById("includePackageSummarySelect"),
   skillEditor: document.getElementById("skillEditor"),
   loadSkillInput: document.getElementById("loadSkillInput"),
   saveSkillBtn: document.getElementById("saveSkillBtn"),
@@ -111,6 +109,7 @@ const el = {
   copyReportBtn: document.getElementById("copyReportBtn"),
   saveReportBtn: document.getElementById("saveReportBtn"),
   reportOutput: document.getElementById("reportOutput"),
+  requestDebugOutput: document.getElementById("requestDebugOutput"),
   statusBar: document.getElementById("statusBar"),
 };
 
@@ -497,45 +496,8 @@ function blobToDataUrl(blob) {
   });
 }
 
-function buildSystemPrompt(skillText) {
-  const sections = [el.systemIntroEditor.value.trim() || DEFAULT_SYSTEM_INTRO];
-  if (el.includePackageSummarySelect.value === "yes" && state.currentPackage) {
-    const manifest = state.currentPackage.manifest;
-    sections.push(
-      [
-        "Package Summary:",
-        `- package_name: ${manifest.package_name}`,
-        `- story_id: ${manifest.story_id}`,
-        `- difficulty: ${manifest.difficulty}`,
-        `- step_count: ${manifest.steps.length}`,
-      ].join("\n")
-    );
-  }
-  if (el.contextScopeSelect.value === "all_steps" && state.currentPackage) {
-    const allStepsSummary = state.currentPackage.dataSpec
-      .map((step) => {
-        const goal = step.user_goal_zh || step.context_injection || "";
-        return `- ${step.step_id}: ${goal}`;
-      })
-      .join("\n");
-    sections.push(`Full Story Context:\n${allStepsSummary}`);
-  } else if (state.currentPackage) {
-    const step = getCurrentStep();
-    if (step) {
-      sections.push(
-        [
-          "Current Step Context:",
-          `- step_id: ${step.step_id}`,
-          `- context_injection: ${step.context_injection || ""}`,
-          `- user_goal: ${step.user_goal_zh || ""}`,
-        ].join("\n")
-      );
-    }
-  }
-  if (el.includeSkillSelect.value === "yes") {
-    sections.push(["Use the following skill as your rubric and output contract:", skillText].join("\n\n"));
-  }
-  return sections.filter(Boolean).join("\n\n");
+function buildSystemPrompt() {
+  return el.systemIntroEditor.value.trim() || DEFAULT_SYSTEM_INTRO;
 }
 
 function updateSystemPromptPreview() {
@@ -562,7 +524,15 @@ function saveReportToFile() {
   setStatus("Report saved to local md.");
 }
 
-function buildUserPrompt(step) {
+function buildUserPrompt(step, skillText) {
+  const contextBlock =
+    el.contextScopeSelect.value === "all_steps" && state.currentPackage
+      ? [
+          "Story Context:",
+          ...state.currentPackage.dataSpec.map((item) => `${item.step_id}: ${item.context_injection || ""}`),
+        ].join("\n")
+      : ["Current Step Context:", `${step.step_id}: ${step.context_injection || ""}`].join("\n");
+
   const missingImages = [
     ["main_card_thumb_url", step.main_card_thumb_url],
     ["main_card_detail_url", step.main_card_detail_url],
@@ -572,26 +542,65 @@ function buildUserPrompt(step) {
     .filter(([, value]) => !value || !state.currentPackage.fileMap.has(normalizeRelativePath(value)))
     .map(([key]) => key);
 
+  const targetStepLines = [
+    `- step_id: ${step.step_id}`,
+    `- context_injection: ${step.context_injection || ""}`,
+    step.user_goal_zh ? `- user_goal: ${step.user_goal_zh}` : null,
+    step.task_prompt?.zh ? `- task_prompt: ${step.task_prompt.zh}` : null,
+  ].filter(Boolean);
+
   return [
     "Please evaluate the current step and output a Markdown report.",
     "",
-    "Evaluation requirement:",
-    "1. Judge main-sub card causal relevance.",
-    "2. Judge thumbnail-detail relevance.",
-    "3. Judge whether the timing of card appearance/disappearance is correct.",
-    "4. Judge whether card content is correct and complete under the step context.",
+    contextBlock,
     "",
-    "Current step structured data:",
-    JSON.stringify(step, null, 2),
+    "Current target step:",
+    ...targetStepLines,
+    "",
+    "Image inputs:",
+    "- main thumb image",
+    "- main detail image",
+    "- sub thumb image",
+    "- sub detail image",
     "",
     "Important constraints:",
-    "- Treat Card A as the primary task card.",
-    "- Treat Card B as the supporting linked card.",
-    "- You must consider both thumbnail and detail images for both main and sub cards.",
-    "- Use evidence from city, station, cinema, dinner, time window, and current user goal.",
+    "- Treat Card A as the primary task card and Card B as the supporting linked card.",
+    "- Use only the chosen step context scope and the four images.",
+    "- Do not rely on app name fields, relevance labels, or prompt-generation metadata.",
+    "- Do not infer from hidden file names, placeholder field names, or package-level summaries.",
     "- Keep the report concise but decision-oriented.",
     missingImages.length ? `- Missing image fields: ${missingImages.join(", ")}` : "- All four image fields are available.",
-  ].join("\n");
+    el.includeSkillSelect.value === "yes" ? ["", "Skill rubric:", skillText].join("\n") : null,
+  ]
+    .filter((item) => item !== null)
+    .join("\n");
+}
+
+function buildDebugRequestBody(requestBody) {
+  return {
+    ...requestBody,
+    messages: requestBody.messages.map((message) => {
+      if (!Array.isArray(message.content)) {
+        return message;
+      }
+      let imageIndex = 0;
+      return {
+        ...message,
+        content: message.content.map((item) => {
+          if (item.type !== "image_url") {
+            return item;
+          }
+          imageIndex += 1;
+          return {
+            type: "image_url",
+            image_url: {
+              url: `[redacted_data_url_image_${imageIndex}]`,
+            },
+          };
+        }),
+      };
+    }),
+  };
 }
 
 async function generateReport() {
@@ -635,29 +644,33 @@ async function generateReport() {
       subDetailDataUrl ? { type: "image_url", image_url: { url: subDetailDataUrl } } : null,
     ].filter(Boolean);
 
+    const requestBody = {
+      model: el.modelInput.value.trim() || "gpt-5.4",
+      temperature,
+      messages: [
+        {
+          role: "system",
+          content: buildSystemPrompt(),
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: buildUserPrompt(step, el.skillEditor.value) },
+            ...imageContent,
+          ],
+        },
+      ],
+    };
+
+    el.requestDebugOutput.value = JSON.stringify(buildDebugRequestBody(requestBody), null, 2);
+
     const response = await fetch(`${baseUrlRaw.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model: el.modelInput.value.trim() || "gpt-5.4",
-        temperature,
-        messages: [
-          {
-            role: "system",
-            content: buildSystemPrompt(el.skillEditor.value),
-          },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: buildUserPrompt(step) },
-              ...imageContent,
-            ],
-          },
-        ],
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     const payload = await response.json();
@@ -745,7 +758,6 @@ el.systemIntroEditor.addEventListener("input", () => {
 });
 el.contextScopeSelect.addEventListener("change", updateSystemPromptPreview);
 el.includeSkillSelect.addEventListener("change", updateSystemPromptPreview);
-el.includePackageSummarySelect.addEventListener("change", updateSystemPromptPreview);
 
 state.globalSkillText = DEFAULT_GLOBAL_SKILL;
 state.systemIntroText = DEFAULT_SYSTEM_INTRO;
@@ -753,3 +765,4 @@ el.systemIntroEditor.value = DEFAULT_SYSTEM_INTRO;
 el.skillEditor.value = DEFAULT_GLOBAL_SKILL;
 updateSystemPromptPreview();
 el.reportOutput.value = "# Evaluation report output";
+el.requestDebugOutput.value = "# Yunwu request body debug output";

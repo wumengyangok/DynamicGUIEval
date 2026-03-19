@@ -34,7 +34,6 @@
 ## Step Summary
 - step_id:
 - user_goal:
-- relevance_level:
 
 ## 1. Main-Sub Card Causal Relevance
 - verdict:

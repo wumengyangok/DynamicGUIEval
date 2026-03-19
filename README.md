@@ -29,6 +29,10 @@ Notes:
   - `set1` to `set5` style packages (`input.txt + output.json + 4 images per step`)
   - the earlier manifest-based demo package format
 - The evaluation skill is global and no longer comes from package-local data files.
+- Yunwu request construction is now split as:
+  - `system`: only the editable opening/system instruction
+  - `user`: selected context scope + current step text + optional skill rubric + four images
+- The generated user prompt intentionally ignores package summary, app-name fields, relevance labels, and prompt-generation metadata.
 - You can load a local skill Markdown file into the editor at any time.
 - On supported browsers, each run will try to sync the current editor content back to local `eval_skill.md`.
 - Reports can be saved directly as local `.md` files.
