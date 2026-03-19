@@ -98,13 +98,15 @@ const el = {
   subDetailCaption: document.getElementById("subDetailCaption"),
   baseUrlInput: document.getElementById("baseUrlInput"),
   modelInput: document.getElementById("modelInput"),
+  temperatureInput: document.getElementById("temperatureInput"),
   apiKeyInput: document.getElementById("apiKeyInput"),
   systemIntroEditor: document.getElementById("systemIntroEditor"),
   contextScopeSelect: document.getElementById("contextScopeSelect"),
   includeSkillSelect: document.getElementById("includeSkillSelect"),
   includePackageSummarySelect: document.getElementById("includePackageSummarySelect"),
   skillEditor: document.getElementById("skillEditor"),
-  bindSkillFileBtn: document.getElementById("bindSkillFileBtn"),
+  loadSkillInput: document.getElementById("loadSkillInput"),
+  saveSkillBtn: document.getElementById("saveSkillBtn"),
   generateBtn: document.getElementById("generateBtn"),
   copyReportBtn: document.getElementById("copyReportBtn"),
   saveReportBtn: document.getElementById("saveReportBtn"),
@@ -116,7 +118,7 @@ function setStatus(text) {
   el.statusBar.textContent = text;
 }
 
-async function bindSkillFileHandle() {
+async function pickSkillSaveHandle() {
   if (!window.showSaveFilePicker) {
     setStatus("Browser does not support direct local file sync for skill.md.");
     return null;
@@ -156,7 +158,7 @@ async function syncSkillFileBeforeRun() {
     }
     if (window.showSaveFilePicker) {
       setStatus("Select eval_skill.md once so future runs can sync automatically.");
-      await bindSkillFileHandle();
+      await pickSkillSaveHandle();
       return;
     }
     setStatus("Auto-sync unavailable in this browser. Skill still uses latest editor content.");
@@ -609,6 +611,12 @@ async function generateReport() {
     return;
   }
 
+  let temperature = Number.parseFloat(el.temperatureInput?.value ?? "0.1");
+  if (!Number.isFinite(temperature)) {
+    temperature = 0.1;
+  }
+  temperature = Math.max(0, Math.min(2, temperature));
+
   try {
     await syncSkillFileBeforeRun();
     setStatus("Generating evaluation report with Yunwu...");
@@ -635,7 +643,7 @@ async function generateReport() {
       },
       body: JSON.stringify({
         model: el.modelInput.value.trim() || "gpt-5.4",
-        temperature: 0.2,
+        temperature,
         messages: [
           {
             role: "system",
@@ -692,17 +700,37 @@ el.folderInput.addEventListener("change", async (event) => {
 });
 
 el.generateBtn.addEventListener("click", generateReport);
-el.bindSkillFileBtn.addEventListener("click", async () => {
+el.saveSkillBtn.addEventListener("click", async () => {
   try {
-    await bindSkillFileHandle();
-    setStatus("Skill file bound. Future runs will overwrite the same eval_skill.md.");
+    if (!state.skillFileHandle) {
+      await pickSkillSaveHandle();
+    } else {
+      await writeSkillToBoundFile();
+    }
+    setStatus("Skill saved to local eval_skill.md.");
   } catch (error) {
     if (error && error.name === "AbortError") {
-      setStatus("Bind skill file cancelled.");
+      setStatus("Save skill cancelled.");
       return;
     }
     console.error(error);
-    setStatus(`Bind skill file failed: ${error.message}`);
+    setStatus(`Save skill failed: ${error.message}`);
+  }
+});
+el.loadSkillInput.addEventListener("change", async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) {
+    return;
+  }
+  try {
+    const text = await file.text();
+    el.skillEditor.value = text;
+    state.globalSkillText = text;
+    updateSystemPromptPreview();
+    setStatus(`Loaded skill from ${file.name}.`);
+  } catch (error) {
+    console.error(error);
+    setStatus(`Load skill failed: ${error.message}`);
   }
 });
 el.copyReportBtn.addEventListener("click", copyReport);

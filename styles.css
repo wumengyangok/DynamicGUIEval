@@ -334,6 +334,10 @@ select {
   color: #fff;
 }
 
+.inline-picker {
+  display: inline-flex;
+}
+
 .secondary-btn {
   border-color: var(--line);
   background: #fff;

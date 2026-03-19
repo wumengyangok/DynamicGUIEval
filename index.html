@@ -111,6 +111,10 @@
                 <span>Model</span>
                 <input id="modelInput" type="text" value="gpt-5.4" />
               </label>
+              <label>
+                <span>Temperature</span>
+                <input id="temperatureInput" type="number" min="0" max="2" step="0.1" value="0.1" />
+              </label>
               <label class="full-row">
                 <span>API Key</span>
                 <input id="apiKeyInput" type="password" placeholder="Enter Yunwu API key" />
@@ -157,8 +161,12 @@
             </div>
             <textarea id="skillEditor" class="editor"></textarea>
             <div class="button-row">
-              <button id="bindSkillFileBtn" class="secondary-btn" type="button">
-                Bind Skill File
+              <label class="folder-button inline-picker">
+                <input id="loadSkillInput" type="file" accept=".md,text/markdown,text/plain" />
+                <span>Load Skill</span>
+              </label>
+              <button id="saveSkillBtn" class="secondary-btn" type="button">
+                Save Skill
               </button>
               <button id="generateBtn" class="primary-btn" type="button">
                 Generate Evaluation Report
