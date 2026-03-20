@@ -164,6 +164,9 @@
               <button id="generateBtn" class="primary-btn" type="button">
                 Generate Evaluation Report
               </button>
+              <button id="generateAllBtn" class="primary-btn" type="button">
+                Generate All Reports
+              </button>
               <button id="copyReportBtn" class="secondary-btn" type="button">
                 Copy Report
               </button>
@@ -171,7 +174,20 @@
                 Save Report MD
               </button>
             </div>
+            <div class="batch-progress">
+              <progress id="batchProgressBar" max="1" value="0"></progress>
+              <div id="batchProgressText" class="subtle-text">No batch run yet.</div>
+            </div>
             <div id="statusBar" class="status-bar">Ready.</div>
+          </div>
+
+          <div class="panel card grow">
+            <div class="panel-header">
+              <h2>Story Summary</h2>
+            </div>
+            <div id="storySummary" class="accuracy-panel empty-state">
+              No package summary yet.
+            </div>
           </div>
 
           <div class="panel card grow">
@@ -179,6 +195,15 @@
               <h2>Evaluation Report</h2>
             </div>
             <textarea id="reportOutput" class="editor report-output" readonly></textarea>
+          </div>
+
+          <div class="panel card grow">
+            <div class="panel-header">
+              <h2>Judgment Accuracy</h2>
+            </div>
+            <div id="judgmentAccuracy" class="accuracy-panel empty-state">
+              No parsed final JSON yet.
+            </div>
           </div>
 
           <div class="panel card grow">

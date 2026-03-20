@@ -4,31 +4,31 @@ This is a zero-dependency local demo for dynamic GUI evaluation.
 
 Global evaluation skill file:
 
-- `eval_skill.md` at the root
+- `eval_skill.md` at the root of `eval_demo_web/`
 
 How to use:
 
 1. Open `index.html` directly in a browser.
-2. The page preloads `sample06` `step2` plus its saved report for demo use.
-3. Click `Load Story Package Folder` if you want to replace the demo package.
-4. Select either:
+2. Click `Load Story Package Folder`.
+3. Select either:
    - one package folder such as `demo_packages/set1`
    - or the parent folder `demo_packages/` to load `set1` to `set5` together
-5. Optionally enter a Yunwu API key.
-6. Adjust the Yunwu model settings, including `temperature` (default `0.1`).
-7. Use `Load Skill` to import a local `.md` skill file if needed.
-8. Edit the global evaluation skill and VLM input options on the right.
-9. Use `Save Skill` to write the current editor content back to local `eval_skill.md`.
-10. Click `Generate Evaluation Report`.
-11. On first save or first run in a supported browser, select the local `eval_skill.md` target once so future runs can sync the file automatically.
+4. Optionally enter a Yunwu API key.
+5. Adjust the Yunwu model settings, including `temperature` (default `0.1`).
+6. Use `Load Skill` to import a local `.md` skill file if needed.
+7. Edit the global evaluation skill and VLM input options on the right.
+8. Use `Save Skill` to write the current editor content back to local `eval_skill.md`.
+9. Click `Generate Evaluation Report` for the current step, or `Generate All Reports` to process every step from `step2` onward.
 
 Notes:
 
 - No local server is required.
-- On launch, the page shows a built-in demo point: `sample06` `step2`, including its four images and a saved Markdown report.
 - Story packages are loaded with the browser file picker.
-- The page support:
+- If a step report already exists locally with the name pattern `<package>_<step>_evaluation_report.md`, it will be loaded automatically when that step is selected.
+- The Story Summary panel aggregates all available step reports in the current package and shows total accuracy plus per-metric match rates.
+- The page now supports both:
   - `set1` to `set5` style packages (`input.txt + output.json + 4 images per step`)
+  - the earlier manifest-based demo package format
 - The evaluation skill is global and no longer comes from package-local data files.
 - Yunwu request construction is now split as:
   - `system`: only the editable opening/system instruction
